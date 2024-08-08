@@ -845,6 +845,7 @@ func (d *decoder) mapping(n *Node, out reflect.Value) (good bool) {
 				failf("invalid map key: %#v", k.Interface())
 			}
 			e := reflect.New(et).Elem()
+			addLocation(n.Content[i], n.Content[i+1])
 			if d.unmarshal(n.Content[i+1], e) || n.Content[i+1].ShortTag() == nullTag && (mapIsNew || !out.MapIndex(k).IsValid()) {
 				out.SetMapIndex(k, e)
 			}
