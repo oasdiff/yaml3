@@ -13,130 +13,109 @@ func addLocation(key, n *Node) *Node {
 
 	switch n.Kind {
 	case MappingNode:
-		n.Content = append(n.Content, getMapLocation(key, n)...)
+		n.Content = append(n.Content, getNamedMap(locTag, append(getKeyLocation(key), getNamedMap("fields", getFieldLocations(n, isScalar))...))...)
 	case SequenceNode:
-		n.Content = append(n.Content, getSeqLocation(key, n)...)
+		n.Content = append(n.Content, getMap(getNamedMap(locTag, append(getKeyLocation(key), getNamedMap("elements", getSequenceLocations(n, isScalar))...))))
 	}
 
 	return n
 }
 
-func isLocationElement(key *Node) bool {
-	return key.Line == 0
-}
-
-func getMapLocation(key, n *Node) []*Node {
-
-	nodes := make([]*Node, 2)
-
-	addMap(nodes, 0, locTag, append(getKeyLocation(key, "key"), getFieldLocations(n)...))
-
-	return nodes
-}
-
-func getSeqLocation(key, n *Node) []*Node {
-
-	nodes := make([]*Node, 1)
-
-	addSeqElement(nodes, 0, "x", getKeyLocation(key, "key"))
-
-	return nodes
-}
-
-func getKeyLocation(key *Node, title string) []*Node {
-	nodes := make([]*Node, 2)
-
-	addMap(nodes, 0, title, getLocationObject(key))
-
-	return nodes
-}
-
-func getFieldLocations(n *Node) []*Node {
-	nodes := make([]*Node, 2)
-
-	addMap(nodes, 0, "fields", getFieldLocationsInternal(n, isScalar))
-
-	return nodes
-}
-
-type Condition func(key, n *Node) bool
-
-func isScalar(_, n *Node) bool {
-	return n.Kind == ScalarNode
-}
-
-func all(_, _ *Node) bool {
-	return true
-}
-
-func getFieldLocationsInternal(n *Node, condition Condition) []*Node {
+func getFieldLocations(n *Node, condition Condition) []*Node {
 
 	nodes := []*Node{}
 
 	l := len(n.Content)
 	for i := 0; i < l; i += 2 {
-		if condition(n.Content[i], n.Content[i+1]) {
-			nodes = append(nodes, getKeyLocation(n.Content[i], n.Content[i].Value)...)
+		if condition(n.Content[i+1]) {
+			nodes = append(nodes, getNodeLocation(n.Content[i])...)
 		}
 	}
 	return nodes
 }
 
-func getLocationObject(key *Node) []*Node {
-	nodes := make([]*Node, 6)
+func getSequenceLocations(n *Node, condition Condition) []*Node {
 
-	addInt(nodes, 0, "line", key.Line)
-	addInt(nodes, 2, "column", key.Column)
-	addString(nodes, 4, "name", key.Value)
+	nodes := []*Node{}
 
+	for _, element := range n.Content {
+		if condition(element) {
+			nodes = append(nodes, getNodeLocation(element)...)
+		}
+	}
 	return nodes
 }
 
-func addInt(nodes []*Node, index int, title string, value int) {
-	nodes[index] = &Node{
-		Kind:  ScalarNode,
-		Tag:   "!!str",
-		Value: title,
-	}
-	nodes[index+1] = &Node{
-		Kind:  ScalarNode,
-		Tag:   "!!int",
-		Value: fmt.Sprintf("%d", value),
-	}
-
+func isLocationElement(key *Node) bool {
+	// we rely on the fact that the line number is 0 for elements that we added
+	// a better design would be to use a dedicated field in the node
+	return key.Line == 0
 }
 
-func addString(nodes []*Node, index int, title string, value string) {
-	nodes[index] = &Node{
-		Kind:  ScalarNode,
-		Tag:   "!!str",
-		Value: title,
-	}
-	nodes[index+1] = &Node{
-		Kind:  ScalarNode,
-		Tag:   "!!str",
-		Value: value,
+func getNodeLocation(n *Node) []*Node {
+	return getNamedMap(n.Value, getLocationObject(n))
+}
+
+func getKeyLocation(n *Node) []*Node {
+	return getNamedMap("key", getLocationObject(n))
+}
+
+func getNamedMap(title string, content []*Node) []*Node {
+	return []*Node{
+		{
+			Kind:  ScalarNode,
+			Tag:   "!!str",
+			Value: title,
+		},
+		getMap(content),
 	}
 }
 
-func addMap(nodes []*Node, index int, title string, content []*Node) {
-	nodes[index] = &Node{
-		Kind:  ScalarNode,
-		Tag:   "!!str",
-		Value: title,
-	}
-	nodes[index+1] = &Node{
+func getMap(content []*Node) *Node {
+	return &Node{
 		Kind:    MappingNode,
 		Tag:     "!!map",
 		Content: content,
 	}
 }
 
-func addSeqElement(nodes []*Node, index int, title string, content []*Node) {
-	nodes[index] = &Node{
-		Kind:    MappingNode,
-		Value:   title,
-		Tag:     "!!map",
-		Content: content,
+type Condition func(n *Node) bool
+
+func isScalar(n *Node) bool {
+	return n.Kind == ScalarNode
+}
+
+func getLocationObject(key *Node) []*Node {
+	return []*Node{
+		{
+			Kind:  ScalarNode,
+			Tag:   "!!str",
+			Value: "line",
+		},
+		{
+			Kind:  ScalarNode,
+			Tag:   "!!int",
+			Value: fmt.Sprintf("%d", key.Line),
+		},
+		{
+			Kind:  ScalarNode,
+			Tag:   "!!str",
+			Value: "col",
+		},
+		{
+			Kind:  ScalarNode,
+			Tag:   "!!int",
+			Value: fmt.Sprintf("%d", key.Column),
+		},
+		{
+			Kind:  ScalarNode,
+			Tag:   "!!str",
+			Value: "name",
+		},
+		{
+			Kind:  ScalarNode,
+			Tag:   "!!string",
+			Value: key.Value,
+		},
 	}
 }
