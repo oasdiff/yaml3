@@ -4,6 +4,10 @@ import "fmt"
 
 const locTag = "x-location"
 
+func isScalar(n *Node) bool {
+	return n.Kind == ScalarNode
+}
+
 func addLocation(key, n *Node) *Node {
 
 	// if this is an element we added, return
@@ -13,36 +17,49 @@ func addLocation(key, n *Node) *Node {
 
 	switch n.Kind {
 	case MappingNode:
-		n.Content = append(n.Content, getNamedMap(locTag, append(getKeyLocation(key), getNamedMap("fields", getFieldLocations(n, isScalar))...))...)
+		n.Content = append(n.Content, getNamedMap(locTag, append(getKeyLocation(key), getNamedMap("fields", getFieldLocations(n))...))...)
 	case SequenceNode:
-		n.Content = append(n.Content, getMap(getNamedMap(locTag, append(getKeyLocation(key), getNamedMap("elements", getSequenceLocations(n, isScalar))...))))
+		n.Content = append(n.Content, getMap(getNamedMap(locTag, append(getKeyLocation(key), getNamedMap("elements", getSequenceLocations(n))...))))
 	}
 
 	return n
 }
 
-func getFieldLocations(n *Node, condition Condition) []*Node {
-
-	nodes := []*Node{}
+func getFieldLocations(n *Node) []*Node {
 
 	l := len(n.Content)
+	size := 0
 	for i := 0; i < l; i += 2 {
-		if condition(n.Content[i+1]) {
+		if isScalar(n.Content[i+1]) {
+			size += 2
+		}
+	}
+
+	nodes := make([]*Node, 0, size)
+	for i := 0; i < l; i += 2 {
+		if isScalar(n.Content[i+1]) {
 			nodes = append(nodes, getNodeLocation(n.Content[i])...)
 		}
 	}
 	return nodes
 }
 
-func getSequenceLocations(n *Node, condition Condition) []*Node {
+func getSequenceLocations(n *Node) []*Node {
 
-	nodes := []*Node{}
-
+	size := 0
 	for _, element := range n.Content {
-		if condition(element) {
+		if isScalar(element) {
+			size += 2
+		}
+	}
+
+	nodes := make([]*Node, 0, size)
+	for _, element := range n.Content {
+		if isScalar(element) {
 			nodes = append(nodes, getNodeLocation(element)...)
 		}
 	}
+
 	return nodes
 }
 
@@ -77,12 +94,6 @@ func getMap(content []*Node) *Node {
 		Tag:     "!!map",
 		Content: content,
 	}
-}
-
-type Condition func(n *Node) bool
-
-func isScalar(n *Node) bool {
-	return n.Kind == ScalarNode
 }
 
 func getLocationObject(key *Node) []*Node {
