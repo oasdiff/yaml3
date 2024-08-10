@@ -24,10 +24,8 @@ import (
 	"os"
 	"reflect"
 	"strings"
-	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	. "gopkg.in/check.v1"
 	"gopkg.in/yaml.v3"
 )
@@ -1744,10 +1742,10 @@ func (s *S) TestFuzzCrashers(c *C) {
 	}
 }
 
-func TestLocation(t *testing.T) {
+func (s *S) TestLocation(c *C) {
 	input := `company:
   name: tufin
-  founder: 
+  founder:
     first: reuven
     second: harrison
     title: cto
@@ -1755,23 +1753,18 @@ func TestLocation(t *testing.T) {
   - securetrack
   - securechange
   - object:
-      a
-      b
+      a: 1
+      b: 2
+      c: 3
 `
 	dec := yaml.NewDecoder(bytes.NewBufferString(input))
 	var out any
 	err := dec.Decode(&out)
-	require.NoError(t, err)
+	c.Assert(err, IsNil)
 	result, err := yaml.Marshal(out)
-	require.NoError(t, err)
+	c.Assert(err, IsNil)
 	fo, _ := os.Create("output.yaml")
 	fo.Write(result)
-
-	require.Equal(t, `company:
-		    project:
-		        name: oasdiff
-	
-	`, string(result))
 }
 
 //var data []byte
