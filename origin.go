@@ -2,24 +2,24 @@ package yaml
 
 import "fmt"
 
-const locTag = "x-location"
+const originTag = "origin"
 
 func isScalar(n *Node) bool {
 	return n.Kind == ScalarNode
 }
 
-func addLocation(key, n *Node) *Node {
+func addOrigin(key, n *Node) *Node {
 
-	// if this is an element we added, return
-	if isLocationElement(key) {
+	// if this is an "origin" element, return
+	if isOrigin(key) {
 		return n
 	}
 
 	switch n.Kind {
 	case MappingNode:
-		n.Content = append(n.Content, getNamedMap(locTag, append(getKeyLocation(key), getNamedMap("fields", getFieldLocations(n))...))...)
-	case SequenceNode:
-		n.Content = append(n.Content, getMap(getNamedMap(locTag, append(getKeyLocation(key), getNamedMap("elements", getSequenceLocations(n))...))))
+		n.Content = append(n.Content, getNamedMap(originTag, append(getKeyLocation(key), getNamedMap("fields", getFieldLocations(n))...))...)
+		// case SequenceNode:
+		// 	n.Content = append(n.Content, getMap(getNamedMap(originTag, append(getKeyLocation(key), getNamedMap("elements", getSequenceLocations(n))...))))
 	}
 
 	return n
@@ -63,9 +63,10 @@ func getSequenceLocations(n *Node) []*Node {
 	return nodes
 }
 
-func isLocationElement(key *Node) bool {
-	// we rely on the fact that the line number is 0 for elements that we added
-	// a better design would be to use a dedicated field in the node
+// isOrigin returns true if the key is an "origin" element
+// the current implementation is not optimal, as it relies on the key's line number
+// a better design would be to use a dedicated field in the Node struct
+func isOrigin(key *Node) bool {
 	return key.Line == 0
 }
 
@@ -78,6 +79,10 @@ func getKeyLocation(n *Node) []*Node {
 }
 
 func getNamedMap(title string, content []*Node) []*Node {
+	if len(content) == 0 {
+		return nil
+	}
+
 	return []*Node{
 		{
 			Kind:  ScalarNode,
@@ -111,7 +116,7 @@ func getLocationObject(key *Node) []*Node {
 		{
 			Kind:  ScalarNode,
 			Tag:   "!!str",
-			Value: "col",
+			Value: "column",
 		},
 		{
 			Kind:  ScalarNode,
