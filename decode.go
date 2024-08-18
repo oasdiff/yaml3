@@ -319,7 +319,7 @@ type decoder struct {
 	generalMapType reflect.Type
 
 	knownFields bool
-	location    bool
+	origin      bool
 	uniqueKeys  bool
 	decodeCount int
 	aliasCount  int
@@ -847,7 +847,7 @@ func (d *decoder) mapping(n *Node, out reflect.Value) (good bool) {
 			}
 			e := reflect.New(et).Elem()
 
-			if d.location {
+			if d.origin {
 				addOrigin(n.Content[i], n.Content[i+1])
 			}
 			if d.unmarshal(n.Content[i+1], e) || n.Content[i+1].ShortTag() == nullTag && (mapIsNew || !out.MapIndex(k).IsValid()) {

@@ -1760,7 +1760,7 @@ components:
             type: string
 `
 	dec := yaml.NewDecoder(bytes.NewBufferString(input))
-	dec.Location(false)
+	dec.Origin(false)
 	var out any
 	err := dec.Decode(&out)
 	c.Assert(err, IsNil)
