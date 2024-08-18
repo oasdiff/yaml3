@@ -26,8 +26,8 @@ import (
 	"strings"
 	"time"
 
+	yaml "github.com/oasdiff/yaml3"
 	. "gopkg.in/check.v1"
-	"gopkg.in/yaml.v3"
 )
 
 var unmarshalIntTest = 123
@@ -1743,21 +1743,24 @@ func (s *S) TestFuzzCrashers(c *C) {
 }
 
 func (s *S) TestLocation(c *C) {
-	input := `company:
-  name: tufin
-  founder:
-    first: reuven
-    second: harrison
-    title: cto
-  products:
-  - securetrack
-  - securechange
-  - object:
-      a: 1
-      b: 2
-      c: 3
+	input := `paths:
+  /testpath:
+    get:
+      responses:
+        "200":
+          $ref: "#/components/responses/testpath_200_response"
+
+components:
+  responses:
+    testpath_200_response:
+      description: a custom response
+      content:
+        application/json:
+          schema:
+            type: string
 `
 	dec := yaml.NewDecoder(bytes.NewBufferString(input))
+	dec.Location(false)
 	var out any
 	err := dec.Decode(&out)
 	c.Assert(err, IsNil)
