@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"log"
 
-	yaml "github.com/oasdiff/yaml3"
+	"gopkg.in/yaml.v3"
 )
 
 // An example showing how to unmarshal embedded
