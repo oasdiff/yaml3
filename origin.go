@@ -9,23 +9,30 @@ func isScalar(n *Node) bool {
 }
 
 func addOriginInSeq(n *Node) *Node {
-	return addOriginInMap(n.Content[0], n)
+
+	if n.Kind != MappingNode {
+		return n
+	}
+
+	// in case of a sequence, we use the first element as the key
+	return addOrigin(n.Content[0], n)
 }
 
 func addOriginInMap(key, n *Node) *Node {
 
-	// if this is an "origin" element, return
+	if n.Kind != MappingNode {
+		return n
+	}
+
+	return addOrigin(key, n)
+}
+
+func addOrigin(key, n *Node) *Node {
 	if isOrigin(key) {
 		return n
 	}
 
-	switch n.Kind {
-	case MappingNode:
-		n.Content = append(n.Content, getNamedMap(originTag, append(getKeyLocation(key), getNamedMap("fields", getFieldLocations(n))...))...)
-	// case SequenceNode:
-	// 	n.Content = append(n.Content, getMap(getNamedMap(originTag, append(getKeyLocation(key), getNamedMap("elements", getSequenceLocations(n))...))))
-	}
-
+	n.Content = append(n.Content, getNamedMap(originTag, append(getKeyLocation(key), getNamedMap("fields", getFieldLocations(n))...))...)
 	return n
 }
 
@@ -45,25 +52,6 @@ func getFieldLocations(n *Node) []*Node {
 			nodes = append(nodes, getNodeLocation(n.Content[i])...)
 		}
 	}
-	return nodes
-}
-
-func getSequenceLocations(n *Node) []*Node {
-
-	size := 0
-	for _, element := range n.Content {
-		if isScalar(element) {
-			size += 2
-		}
-	}
-
-	nodes := make([]*Node, 0, size)
-	for _, element := range n.Content {
-		if isScalar(element) {
-			nodes = append(nodes, getNodeLocation(element)...)
-		}
-	}
-
 	return nodes
 }
 
