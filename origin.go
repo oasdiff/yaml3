@@ -8,7 +8,11 @@ func isScalar(n *Node) bool {
 	return n.Kind == ScalarNode
 }
 
-func addOrigin(key, n *Node) *Node {
+func addOriginInSeq(n *Node) *Node {
+	return addOriginInMap(n.Content[0], n)
+}
+
+func addOriginInMap(key, n *Node) *Node {
 
 	// if this is an "origin" element, return
 	if isOrigin(key) {
@@ -18,8 +22,8 @@ func addOrigin(key, n *Node) *Node {
 	switch n.Kind {
 	case MappingNode:
 		n.Content = append(n.Content, getNamedMap(originTag, append(getKeyLocation(key), getNamedMap("fields", getFieldLocations(n))...))...)
-		// case SequenceNode:
-		// 	n.Content = append(n.Content, getMap(getNamedMap(originTag, append(getKeyLocation(key), getNamedMap("elements", getSequenceLocations(n))...))))
+	// case SequenceNode:
+	// 	n.Content = append(n.Content, getMap(getNamedMap(originTag, append(getKeyLocation(key), getNamedMap("elements", getSequenceLocations(n))...))))
 	}
 
 	return n

@@ -751,6 +751,9 @@ func (d *decoder) sequence(n *Node, out reflect.Value) (good bool) {
 	j := 0
 	for i := 0; i < l; i++ {
 		e := reflect.New(et).Elem()
+		if d.origin {
+			addOriginInSeq(n.Content[i])
+		}
 		if ok := d.unmarshal(n.Content[i], e); ok {
 			out.Index(j).Set(e)
 			j++
@@ -848,7 +851,7 @@ func (d *decoder) mapping(n *Node, out reflect.Value) (good bool) {
 			e := reflect.New(et).Elem()
 
 			if d.origin {
-				addOrigin(n.Content[i], n.Content[i+1])
+				addOriginInMap(n.Content[i], n.Content[i+1])
 			}
 			if d.unmarshal(n.Content[i+1], e) || n.Content[i+1].ShortTag() == nullTag && (mapIsNew || !out.MapIndex(k).IsValid()) {
 				out.SetMapIndex(k, e)

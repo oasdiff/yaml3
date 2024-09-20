@@ -110,6 +110,8 @@ func (dec *Decoder) KnownFields(enable bool) {
 	dec.knownFields = enable
 }
 
+// Origin enables the recording of the line and column of the
+// decoded values in the YAML content.
 func (dec *Decoder) Origin(enable bool) {
 	dec.origin = enable
 }
