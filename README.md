@@ -1,5 +1,9 @@
 # YAML support for the Go language
 
+Fork
+----
+This fork is an improved version of the go-yaml/yaml package, designed to include line and column location information for YAML elements during unmarshalling.
+
 Introduction
 ------------
 
@@ -147,4 +151,3 @@ b:
   - 3
   - 4
 ```
-
