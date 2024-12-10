@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"log"
 
-	"oasdiff/yaml.v3"
+	"oasdiff/yaml3"
 )
 
 // An example showing how to unmarshal embedded

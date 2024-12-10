@@ -23,7 +23,7 @@ import (
 	"io"
 	"strings"
 
-	"oasdiff/yaml.v3"
+	"oasdiff/yaml3"
 
 	. "gopkg.in/check.v1"
 )

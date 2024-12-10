@@ -1,4 +1,4 @@
-module oasdiff/yaml.v3
+module oasdiff/yaml3
 
 go 1.22.5
 
