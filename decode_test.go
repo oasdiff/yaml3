@@ -21,13 +21,12 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"os"
 	"reflect"
 	"strings"
 	"time"
 
+	yaml "github.com/oasdiff/yaml3"
 	. "gopkg.in/check.v1"
-	"github.com/oasdiff/yaml3"
 )
 
 var unmarshalIntTest = 123
@@ -1740,34 +1739,6 @@ func (s *S) TestFuzzCrashers(c *C) {
 		var v interface{}
 		_ = yaml.Unmarshal([]byte(data), &v)
 	}
-}
-
-func (s *S) TestLocation(c *C) {
-	input := `paths:
-  /testpath:
-    get:
-      responses:
-        "200":
-          $ref: "#/components/responses/testpath_200_response"
-
-components:
-  responses:
-    testpath_200_response:
-      description: a custom response
-      content:
-        application/json:
-          schema:
-            type: string
-`
-	dec := yaml.NewDecoder(bytes.NewBufferString(input))
-	dec.Origin(false)
-	var out any
-	err := dec.Decode(&out)
-	c.Assert(err, IsNil)
-	result, err := yaml.Marshal(out)
-	c.Assert(err, IsNil)
-	fo, _ := os.Create("output.yaml")
-	fo.Write(result)
 }
 
 //var data []byte
