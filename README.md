@@ -76,7 +76,7 @@ import (
         "fmt"
         "log"
 
-        "oasdiff/yaml3"
+        "oasdiff/yaml"
 )
 
 var data = `

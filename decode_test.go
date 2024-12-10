@@ -27,7 +27,7 @@ import (
 	"time"
 
 	. "gopkg.in/check.v1"
-	"oasdiff/yaml3"
+	"github.com/oasdiff/yaml3"
 )
 
 var unmarshalIntTest = 123
