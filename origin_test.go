@@ -31,6 +31,8 @@ func (s *S) TestOrigin_Map(c *C) {
 	input := `
 root:
     hello: world
+    object:
+        foo: bar
 `
 
 	dec := yaml.NewDecoder(bytes.NewBufferString(input[1:]))
@@ -47,6 +49,18 @@ root:
 	output := `
 root:
     hello: world
+    object:
+        foo: bar
+        origin:
+            fields:
+                foo:
+                    column: 9
+                    line: 4
+                    name: foo
+            key:
+                column: 5
+                line: 3
+                name: object
     origin:
         fields:
             hello:
