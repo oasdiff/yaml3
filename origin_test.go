@@ -48,20 +48,7 @@ root:
 
 	output := `
 root:
-    hello: world
-    object:
-        foo: bar
-        origin:
-            fields:
-                foo:
-                    column: 9
-                    line: 4
-                    name: foo
-            key:
-                column: 5
-                line: 3
-                name: object
-    origin:
+    __origin__:
         fields:
             hello:
                 column: 5
@@ -71,6 +58,19 @@ root:
             column: 1
             line: 1
             name: root
+    hello: world
+    object:
+        __origin__:
+            fields:
+                foo:
+                    column: 9
+                    line: 4
+                    name: foo
+            key:
+                column: 5
+                line: 3
+                name: object
+        foo: bar
 `
 
 	c.Assert(buf.String(), Equals, output[1:])
@@ -99,9 +99,13 @@ root:
 
 	output := `
 root:
+    __origin__:
+        key:
+            column: 1
+            line: 1
+            name: root
     continents:
-        - name: europe
-          origin:
+        - __origin__:
             fields:
                 name:
                     column: 11
@@ -115,9 +119,9 @@ root:
                 column: 11
                 line: 3
                 name: name
+          name: europe
           size: 10
-        - name: america
-          origin:
+        - __origin__:
             fields:
                 name:
                     column: 11
@@ -131,13 +135,22 @@ root:
                 column: 11
                 line: 5
                 name: name
+          name: america
           size: 20
-    origin:
-        key:
-            column: 1
-            line: 1
-            name: root
 `
 
 	c.Assert(buf.String(), Equals, output[1:])
+}
+
+func (s *S) TestOrigin_DuplicateKey(c *C) {
+	input := `
+root:
+    __origin__: test
+`
+
+	dec := yaml.NewDecoder(bytes.NewBufferString(input[1:]))
+	dec.Origin(true)
+	var out any
+	err := dec.Decode(&out)
+	c.Assert(err, ErrorMatches, "yaml: unmarshal errors:\n  line 0: mapping key \"__origin__\" already defined at line 2")
 }
