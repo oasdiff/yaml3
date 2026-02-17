@@ -14,7 +14,7 @@ root:
 `
 
 	dec := yaml.NewDecoder(bytes.NewBufferString(input[1:]))
-	dec.Origin(false)
+	dec.Origin(false, "")
 	var out any
 	err := dec.Decode(&out)
 	c.Assert(err, IsNil)
@@ -36,7 +36,7 @@ root:
 `
 
 	dec := yaml.NewDecoder(bytes.NewBufferString(input[1:]))
-	dec.Origin(true)
+	dec.Origin(true, "file.yaml")
 	var out any
 	err := dec.Decode(&out)
 	c.Assert(err, IsNil)
@@ -52,10 +52,12 @@ root:
         fields:
             hello:
                 column: 5
+                file: file.yaml
                 line: 2
                 name: hello
         key:
             column: 1
+            file: file.yaml
             line: 1
             name: root
     hello: world
@@ -64,10 +66,12 @@ root:
             fields:
                 foo:
                     column: 9
+                    file: file.yaml
                     line: 4
                     name: foo
             key:
                 column: 5
+                file: file.yaml
                 line: 3
                 name: object
         foo: bar
@@ -87,7 +91,7 @@ root:
 `
 
 	dec := yaml.NewDecoder(bytes.NewBufferString(input[1:]))
-	dec.Origin(true)
+	dec.Origin(true, "file.yaml")
 	var out any
 	err := dec.Decode(&out)
 	c.Assert(err, IsNil)
@@ -102,6 +106,7 @@ root:
     __origin__:
         key:
             column: 1
+            file: file.yaml
             line: 1
             name: root
     continents:
@@ -109,14 +114,17 @@ root:
             fields:
                 name:
                     column: 11
+                    file: file.yaml
                     line: 3
                     name: name
                 size:
                     column: 11
+                    file: file.yaml
                     line: 4
                     name: size
             key:
                 column: 11
+                file: file.yaml
                 line: 3
                 name: name
           name: europe
@@ -125,14 +133,17 @@ root:
             fields:
                 name:
                     column: 11
+                    file: file.yaml
                     line: 5
                     name: name
                 size:
                     column: 11
+                    file: file.yaml
                     line: 6
                     name: size
             key:
                 column: 11
+                file: file.yaml
                 line: 5
                 name: name
           name: america
@@ -149,7 +160,7 @@ root:
 `
 
 	dec := yaml.NewDecoder(bytes.NewBufferString(input[1:]))
-	dec.Origin(true)
+	dec.Origin(true, "")
 	var out any
 	err := dec.Decode(&out)
 	c.Assert(err, ErrorMatches, "yaml: unmarshal errors:\n  line 0: mapping key \"__origin__\" already defined at line 2")
