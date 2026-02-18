@@ -32,7 +32,10 @@ func addOrigin(key, n *Node, file string) *Node {
 		return n
 	}
 
-	n.Content = append(n.Content, getNamedMap(originTag, append(getKeyLocation(key, file), getNamedMap("fields", getFieldLocations(n, file))...))...)
+	content := getKeyLocation(key, file)
+	content = append(content, getNamedMap("fields", getFieldLocations(n, file))...)
+	content = append(content, getNamedMap("sequences", getSequenceLocations(n, file))...)
+	n.Content = append(n.Content, getNamedMap(originTag, content)...)
 	return n
 }
 
@@ -53,6 +56,41 @@ func getFieldLocations(n *Node, file string) []*Node {
 		}
 	}
 	return nodes
+}
+
+func getSequenceLocations(n *Node, file string) []*Node {
+	l := len(n.Content)
+	var nodes []*Node
+	for i := 0; i < l; i += 2 {
+		if n.Content[i+1].Kind == SequenceNode {
+			nodes = append(nodes, getNamedSeq(n.Content[i].Value, n.Content[i+1], file)...)
+		}
+	}
+	return nodes
+}
+
+func getNamedSeq(title string, seq *Node, file string) []*Node {
+	var items []*Node
+	for _, item := range seq.Content {
+		if item.Kind == ScalarNode {
+			items = append(items, getMap(getLocationObject(item, file)))
+		}
+	}
+	if len(items) == 0 {
+		return nil
+	}
+	return []*Node{
+		{
+			Kind:  ScalarNode,
+			Tag:   "!!str",
+			Value: title,
+		},
+		{
+			Kind:    SequenceNode,
+			Tag:     "!!seq",
+			Content: items,
+		},
+	}
 }
 
 // isOrigin returns true if the key is an "origin" element

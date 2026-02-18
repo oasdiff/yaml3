@@ -153,6 +153,138 @@ root:
 	c.Assert(buf.String(), Equals, output[1:])
 }
 
+// TestOrigin_MapOfScalars verifies that getFieldLocations() records each
+// scalar entry in a map's __origin__.fields, providing precise line/column
+// for maps of atomic types (e.g. map[string]string in Go).
+func (s *S) TestOrigin_MapOfScalars(c *C) {
+	input := `
+parent:
+    name: test
+    labels:
+        env: production
+        region: us-east
+        version: "2.0"
+`
+
+	dec := yaml.NewDecoder(bytes.NewBufferString(input[1:]))
+	dec.Origin(true, "spec.yaml")
+	var out any
+	err := dec.Decode(&out)
+	c.Assert(err, IsNil)
+	result, err := yaml.Marshal(out)
+	c.Assert(err, IsNil)
+
+	buf := new(bytes.Buffer)
+	buf.Write(result)
+
+	output := `
+parent:
+    __origin__:
+        fields:
+            name:
+                column: 5
+                file: spec.yaml
+                line: 2
+                name: name
+        key:
+            column: 1
+            file: spec.yaml
+            line: 1
+            name: parent
+    labels:
+        __origin__:
+            fields:
+                env:
+                    column: 9
+                    file: spec.yaml
+                    line: 4
+                    name: env
+                region:
+                    column: 9
+                    file: spec.yaml
+                    line: 5
+                    name: region
+                version:
+                    column: 9
+                    file: spec.yaml
+                    line: 6
+                    name: version
+            key:
+                column: 5
+                file: spec.yaml
+                line: 3
+                name: labels
+        env: production
+        region: us-east
+        version: "2.0"
+    name: test
+`
+
+	c.Assert(buf.String(), Equals, output[1:])
+}
+
+// TestOrigin_SequenceOfScalars verifies that getSequenceLocations() records
+// each scalar item in a sequence under the parent's __origin__.sequences,
+// providing precise line/column for lists of atomic types (e.g. []string in Go).
+func (s *S) TestOrigin_SequenceOfScalars(c *C) {
+	input := `
+schema:
+    description: a test
+    type:
+        - string
+        - "null"
+        - integer
+`
+
+	dec := yaml.NewDecoder(bytes.NewBufferString(input[1:]))
+	dec.Origin(true, "spec.yaml")
+	var out any
+	err := dec.Decode(&out)
+	c.Assert(err, IsNil)
+	result, err := yaml.Marshal(out)
+	c.Assert(err, IsNil)
+
+	buf := new(bytes.Buffer)
+	buf.Write(result)
+
+	output := `
+schema:
+    __origin__:
+        fields:
+            description:
+                column: 5
+                file: spec.yaml
+                line: 2
+                name: description
+        key:
+            column: 1
+            file: spec.yaml
+            line: 1
+            name: schema
+        sequences:
+            type:
+                - column: 11
+                  file: spec.yaml
+                  line: 4
+                  name: string
+                - column: 11
+                  file: spec.yaml
+                  line: 5
+                  name: "null"
+                - column: 11
+                  file: spec.yaml
+                  line: 6
+                  name: integer
+    description: a test
+    type:
+        - string
+        - "null"
+        - integer
+`
+
+	c.Assert(buf.String(), Equals, output[1:])
+}
+
 func (s *S) TestOrigin_DuplicateKey(c *C) {
 	input := `
 root:
