@@ -8,6 +8,10 @@ func isScalar(n *Node) bool {
 	return n.Kind == ScalarNode
 }
 
+func isSequence(n *Node) bool {
+	return n.Kind == SequenceNode
+}
+
 func addOriginInSeq(n *Node, file string) *Node {
 
 	if n.Kind != MappingNode {
@@ -44,14 +48,14 @@ func getFieldLocations(n *Node, file string) []*Node {
 	l := len(n.Content)
 	size := 0
 	for i := 0; i < l; i += 2 {
-		if isScalar(n.Content[i+1]) {
+		if isScalar(n.Content[i+1]) || isSequence(n.Content[i+1]) {
 			size += 2
 		}
 	}
 
 	nodes := make([]*Node, 0, size)
 	for i := 0; i < l; i += 2 {
-		if isScalar(n.Content[i+1]) {
+		if isScalar(n.Content[i+1]) || isSequence(n.Content[i+1]) {
 			nodes = append(nodes, getNodeLocation(n.Content[i], file)...)
 		}
 	}
@@ -62,7 +66,7 @@ func getSequenceLocations(n *Node, file string) []*Node {
 	l := len(n.Content)
 	var nodes []*Node
 	for i := 0; i < l; i += 2 {
-		if n.Content[i+1].Kind == SequenceNode {
+		if isSequence(n.Content[i+1]) {
 			nodes = append(nodes, getNamedSeq(n.Content[i].Value, n.Content[i+1], file)...)
 		}
 	}

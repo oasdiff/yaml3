@@ -104,6 +104,12 @@ root:
 	output := `
 root:
     __origin__:
+        fields:
+            continents:
+                column: 5
+                file: file.yaml
+                line: 2
+                name: continents
         key:
             column: 1
             file: file.yaml
@@ -256,6 +262,11 @@ schema:
                 file: spec.yaml
                 line: 2
                 name: description
+            type:
+                column: 5
+                file: spec.yaml
+                line: 3
+                name: type
         key:
             column: 1
             file: spec.yaml
