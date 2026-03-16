@@ -14,7 +14,7 @@ func isSequence(n *Node) bool {
 
 func addOriginInSeq(n *Node, file string) *Node {
 
-	if n.Kind != MappingNode {
+	if n.Kind != MappingNode || len(n.Content) == 0 {
 		return n
 	}
 

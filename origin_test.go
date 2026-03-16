@@ -296,6 +296,23 @@ schema:
 	c.Assert(buf.String(), Equals, output[1:])
 }
 
+// TestOrigin_SequenceOfEmptyMaps verifies that addOriginInSeq does not panic
+// when a sequence contains an empty mapping node (e.g. `- {}`).
+// Regression test for https://github.com/oasdiff/oasdiff/issues/808.
+func (s *S) TestOrigin_SequenceOfEmptyMaps(c *C) {
+	input := `
+root:
+    items:
+        - {}
+`
+
+	dec := yaml.NewDecoder(bytes.NewBufferString(input[1:]))
+	dec.Origin(true, "file.yaml")
+	var out any
+	err := dec.Decode(&out)
+	c.Assert(err, IsNil)
+}
+
 func (s *S) TestOrigin_DuplicateKey(c *C) {
 	input := `
 root:
