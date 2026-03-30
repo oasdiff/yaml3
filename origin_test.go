@@ -313,6 +313,65 @@ root:
 	c.Assert(err, IsNil)
 }
 
+// TestOrigin_AnchorAliasInMap verifies that a YAML alias used as a map value
+// does not produce duplicate __origin__ keys in nested mapping nodes.
+// Regression test for https://github.com/oasdiff/oasdiff/issues/821.
+//
+// The anchor's nested MappingNode (e.g. "properties") is shared by pointer
+// with every alias that resolves to it. Without the fix, addOriginInMap appends
+// __origin__ to that node once when the anchor is processed, then again for
+// every alias expansion — resulting in a duplicate-key error on marshal.
+func (s *S) TestOrigin_AnchorAliasInMap(c *C) {
+	input := `
+x-inner: &inner
+    type: object
+    properties:
+        x:
+            type: integer
+
+x-outer:
+    type: object
+    properties:
+        nested: *inner
+`
+
+	dec := yaml.NewDecoder(bytes.NewBufferString(input[1:]))
+	dec.Origin(true, "spec.yaml")
+	var out any
+	err := dec.Decode(&out)
+	c.Assert(err, IsNil)
+
+	// Must be able to marshal back — duplicate __origin__ keys would panic here.
+	_, err = yaml.Marshal(out)
+	c.Assert(err, IsNil)
+}
+
+// TestOrigin_AnchorAliasInSequence verifies that a YAML alias used as a
+// sequence element does not produce duplicate __origin__ keys in nested
+// mapping nodes inside the anchor.
+// Regression test for https://github.com/oasdiff/oasdiff/issues/821.
+func (s *S) TestOrigin_AnchorAliasInSequence(c *C) {
+	input := `
+x-pet: &pet
+    name: dog
+    metadata:
+        version: "1.0"
+
+pets:
+    - *pet
+    - *pet
+`
+
+	dec := yaml.NewDecoder(bytes.NewBufferString(input[1:]))
+	dec.Origin(true, "spec.yaml")
+	var out any
+	err := dec.Decode(&out)
+	c.Assert(err, IsNil)
+
+	_, err = yaml.Marshal(out)
+	c.Assert(err, IsNil)
+}
+
 func (s *S) TestOrigin_DuplicateKey(c *C) {
 	input := `
 root:
