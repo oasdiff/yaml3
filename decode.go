@@ -837,9 +837,7 @@ func (d *decoder) mapping(n *Node, out reflect.Value) (good bool) {
 		// These were injected when the anchor was first processed; re-decoding
 		// them during each alias expansion would inflate aliasCount and
 		// spuriously trigger the excessive-aliasing check.
-		if d.aliasDepth > 0 && isOrigin(n.Content[i]) {
-			continue
-		}
+		if d.aliasDepth > 0 && isOrigin(n.Content[i]) { continue }
 		k := reflect.New(kt).Elem()
 		if d.unmarshal(n.Content[i], k) {
 			if mergedFields != nil {

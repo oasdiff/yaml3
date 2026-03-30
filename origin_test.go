@@ -2,6 +2,7 @@ package yaml_test
 
 import (
 	"bytes"
+	"fmt"
 
 	yaml "github.com/oasdiff/yaml3"
 	. "gopkg.in/check.v1"
@@ -369,6 +370,40 @@ pets:
 	c.Assert(err, IsNil)
 
 	_, err = yaml.Marshal(out)
+	c.Assert(err, IsNil)
+}
+
+// TestOrigin_ManyAliasesNoExcessiveAliasing verifies that a spec with many
+// aliases and nested mappings does not trigger the "excessive aliasing" check.
+// Regression test for the follow-up to https://github.com/oasdiff/oasdiff/issues/821:
+// fixing the duplicate __origin__ bug caused __origin__ metadata entries to be
+// re-decoded during every alias expansion, inflating aliasCount and spuriously
+// tripping the ratio check for large specs.
+//
+// The threshold is empirically derived: 5000 aliases of an anchor with 20
+// properties reliably triggers "document contains excessive aliasing" when
+// __origin__ entries are re-decoded during expansion (without the fix), and
+// passes cleanly when those entries are skipped (with the fix).
+func (s *S) TestOrigin_ManyAliasesNoExcessiveAliasing(c *C) {
+	// Build an anchor with 20 scalar properties so __origin__ metadata is
+	// injected and adds many extra nodes to the anchor's Content slice.
+	props := ""
+	for i := range 20 {
+		props += fmt.Sprintf("        prop%d:\n            type: string\n", i)
+	}
+	anchor := fmt.Sprintf("x-schema: &schema\n    type: object\n    properties:\n%s", props)
+
+	// 5000 aliases push aliasCount/decodeCount past the ratio threshold when
+	// __origin__ entries inside the anchor are re-decoded on each expansion.
+	input := anchor + "\nroot:\n    properties:\n"
+	for i := range 5000 {
+		input += fmt.Sprintf("        field%d: *schema\n", i)
+	}
+
+	dec := yaml.NewDecoder(bytes.NewBufferString(input))
+	dec.Origin(true, "spec.yaml")
+	var out any
+	err := dec.Decode(&out)
 	c.Assert(err, IsNil)
 }
 
