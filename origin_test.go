@@ -408,10 +408,10 @@ func (s *S) TestOrigin_ManyAliasesNoExcessiveAliasing(c *C) {
 }
 
 // TestOrigin_AliasPreservesSequences verifies that __origin__ data (including
-// sequences tracking) is preserved in alias-expanded schemas.
-// This is a regression test for the case where alias expansion stripped origin
-// data, causing Origin.Sequences["required"] to be nil and making it impossible
-// to navigate to source locations for changes like response-property-became-optional.
+// sequence-item locations) is preserved when a YAML alias is expanded.
+// Regression test: the previous fix for excessive aliasing skipped __origin__
+// entries entirely during expansion, which silently dropped all origin metadata
+// from alias-expanded mappings.
 func (s *S) TestOrigin_AliasPreservesSequences(c *C) {
 	input := `
 schema: &schema
