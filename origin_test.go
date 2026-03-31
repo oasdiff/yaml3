@@ -407,6 +407,40 @@ func (s *S) TestOrigin_ManyAliasesNoExcessiveAliasing(c *C) {
 	c.Assert(err, IsNil)
 }
 
+// TestOrigin_AliasPreservesSequences verifies that __origin__ data (including
+// sequence-item locations) is preserved when a YAML alias is expanded.
+// Regression test: the previous fix for excessive aliasing skipped __origin__
+// entries entirely during expansion, which silently dropped all origin metadata
+// from alias-expanded mappings.
+func (s *S) TestOrigin_AliasPreservesSequences(c *C) {
+	input := `
+schema: &schema
+    type: object
+    required:
+        - foo
+        - bar
+alias: *schema
+`
+	dec := yaml.NewDecoder(bytes.NewBufferString(input[1:]))
+	dec.Origin(true, "spec.yaml")
+	var out any
+	err := dec.Decode(&out)
+	c.Assert(err, IsNil)
+
+	m := out.(map[string]any)
+	alias := m["alias"].(map[string]any)
+	origin := alias["__origin__"]
+	c.Assert(origin, NotNil, Commentf("alias expansion must preserve __origin__"))
+
+	originMap := origin.(map[string]any)
+	sequences := originMap["sequences"]
+	c.Assert(sequences, NotNil, Commentf("alias __origin__ must contain sequences"))
+
+	seqMap := sequences.(map[string]any)
+	required := seqMap["required"]
+	c.Assert(required, NotNil, Commentf("sequences must contain required field tracking"))
+}
+
 func (s *S) TestOrigin_DuplicateKey(c *C) {
 	input := `
 root:

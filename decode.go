@@ -833,11 +833,24 @@ func (d *decoder) mapping(n *Node, out reflect.Value) (good bool) {
 			mergeNode = n.Content[i+1]
 			continue
 		}
-		// Skip __origin__ metadata entries during alias expansion.
-		// These were injected when the anchor was first processed; re-decoding
-		// them during each alias expansion would inflate aliasCount and
-		// spuriously trigger the excessive-aliasing check.
-		if d.aliasDepth > 0 && isOrigin(n.Content[i]) { continue }
+		// __origin__ metadata entries are injected when the anchor is first processed.
+		// Decoding them through the normal path would count toward aliasCount and
+		// could spuriously trigger the excessive-aliasing check on large specs.
+		// Decode them with aliasDepth temporarily zeroed so they don't count
+		// toward aliasCount, but the origin data is still present in the output.
+		if d.aliasDepth > 0 && isOrigin(n.Content[i]) {
+			savedAliasDepth := d.aliasDepth
+			d.aliasDepth = 0
+			k := reflect.New(kt).Elem()
+			if d.unmarshal(n.Content[i], k) {
+				e := reflect.New(et).Elem()
+				if d.unmarshal(n.Content[i+1], e) {
+					out.SetMapIndex(k, e)
+				}
+			}
+			d.aliasDepth = savedAliasDepth
+			continue
+		}
 		k := reflect.New(kt).Elem()
 		if d.unmarshal(n.Content[i], k) {
 			if mergedFields != nil {
