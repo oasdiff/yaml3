@@ -407,6 +407,40 @@ func (s *S) TestOrigin_ManyAliasesNoExcessiveAliasing(c *C) {
 	c.Assert(err, IsNil)
 }
 
+// TestOrigin_AliasPreservesSequences verifies that __origin__ data (including
+// sequences tracking) is preserved in alias-expanded schemas.
+// This is a regression test for the case where alias expansion stripped origin
+// data, causing Origin.Sequences["required"] to be nil and making it impossible
+// to navigate to source locations for changes like response-property-became-optional.
+func (s *S) TestOrigin_AliasPreservesSequences(c *C) {
+	input := `
+schema: &schema
+    type: object
+    required:
+        - foo
+        - bar
+alias: *schema
+`
+	dec := yaml.NewDecoder(bytes.NewBufferString(input[1:]))
+	dec.Origin(true, "spec.yaml")
+	var out any
+	err := dec.Decode(&out)
+	c.Assert(err, IsNil)
+
+	m := out.(map[string]any)
+	alias := m["alias"].(map[string]any)
+	origin := alias["__origin__"]
+	c.Assert(origin, NotNil, Commentf("alias expansion must preserve __origin__"))
+
+	originMap := origin.(map[string]any)
+	sequences := originMap["sequences"]
+	c.Assert(sequences, NotNil, Commentf("alias __origin__ must contain sequences"))
+
+	seqMap := sequences.(map[string]any)
+	required := seqMap["required"]
+	c.Assert(required, NotNil, Commentf("sequences must contain required field tracking"))
+}
+
 func (s *S) TestOrigin_DuplicateKey(c *C) {
 	input := `
 root:
