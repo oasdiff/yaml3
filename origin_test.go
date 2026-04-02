@@ -8,6 +8,16 @@ import (
 	. "gopkg.in/check.v1"
 )
 
+func toAnyInt(v any) int {
+	switch n := v.(type) {
+	case int:
+		return n
+	case uint64:
+		return int(n)
+	}
+	return 0
+}
+
 func (s *S) TestOrigin_Disabled(c *C) {
 	input := `
 root:
@@ -50,31 +60,27 @@ root:
 	output := `
 root:
     __origin__:
-        fields:
-            hello:
-                column: 5
-                file: file.yaml
-                line: 2
-                name: hello
-        key:
-            column: 1
-            file: file.yaml
-            line: 1
-            name: root
+        - file.yaml
+        - root
+        - 1
+        - 1
+        - 1
+        - hello
+        - 1
+        - 5
+        - 0
     hello: world
     object:
         __origin__:
-            fields:
-                foo:
-                    column: 9
-                    file: file.yaml
-                    line: 4
-                    name: foo
-            key:
-                column: 5
-                file: file.yaml
-                line: 3
-                name: object
+            - file.yaml
+            - object
+            - 3
+            - 5
+            - 1
+            - foo
+            - 1
+            - 9
+            - 0
         foo: bar
 `
 
@@ -105,54 +111,44 @@ root:
 	output := `
 root:
     __origin__:
-        fields:
-            continents:
-                column: 5
-                file: file.yaml
-                line: 2
-                name: continents
-        key:
-            column: 1
-            file: file.yaml
-            line: 1
-            name: root
+        - file.yaml
+        - root
+        - 1
+        - 1
+        - 1
+        - continents
+        - 1
+        - 5
+        - 0
     continents:
         - __origin__:
-            fields:
-                name:
-                    column: 11
-                    file: file.yaml
-                    line: 3
-                    name: name
-                size:
-                    column: 11
-                    file: file.yaml
-                    line: 4
-                    name: size
-            key:
-                column: 11
-                file: file.yaml
-                line: 3
-                name: name
+            - file.yaml
+            - name
+            - 3
+            - 11
+            - 2
+            - name
+            - 0
+            - 11
+            - size
+            - 1
+            - 11
+            - 0
           name: europe
           size: 10
         - __origin__:
-            fields:
-                name:
-                    column: 11
-                    file: file.yaml
-                    line: 5
-                    name: name
-                size:
-                    column: 11
-                    file: file.yaml
-                    line: 6
-                    name: size
-            key:
-                column: 11
-                file: file.yaml
-                line: 5
-                name: name
+            - file.yaml
+            - name
+            - 5
+            - 11
+            - 2
+            - name
+            - 0
+            - 11
+            - size
+            - 1
+            - 11
+            - 0
           name: america
           size: 20
 `
@@ -187,40 +183,32 @@ parent:
 	output := `
 parent:
     __origin__:
-        fields:
-            name:
-                column: 5
-                file: spec.yaml
-                line: 2
-                name: name
-        key:
-            column: 1
-            file: spec.yaml
-            line: 1
-            name: parent
+        - spec.yaml
+        - parent
+        - 1
+        - 1
+        - 1
+        - name
+        - 1
+        - 5
+        - 0
     labels:
         __origin__:
-            fields:
-                env:
-                    column: 9
-                    file: spec.yaml
-                    line: 4
-                    name: env
-                region:
-                    column: 9
-                    file: spec.yaml
-                    line: 5
-                    name: region
-                version:
-                    column: 9
-                    file: spec.yaml
-                    line: 6
-                    name: version
-            key:
-                column: 5
-                file: spec.yaml
-                line: 3
-                name: labels
+            - spec.yaml
+            - labels
+            - 3
+            - 5
+            - 3
+            - env
+            - 1
+            - 9
+            - region
+            - 2
+            - 9
+            - version
+            - 3
+            - 9
+            - 0
         env: production
         region: us-east
         version: "2.0"
@@ -257,36 +245,26 @@ schema:
 	output := `
 schema:
     __origin__:
-        fields:
-            description:
-                column: 5
-                file: spec.yaml
-                line: 2
-                name: description
-            type:
-                column: 5
-                file: spec.yaml
-                line: 3
-                name: type
-        key:
-            column: 1
-            file: spec.yaml
-            line: 1
-            name: schema
-        sequences:
-            type:
-                - column: 11
-                  file: spec.yaml
-                  line: 4
-                  name: string
-                - column: 11
-                  file: spec.yaml
-                  line: 5
-                  name: "null"
-                - column: 11
-                  file: spec.yaml
-                  line: 6
-                  name: integer
+        - spec.yaml
+        - schema
+        - 1
+        - 1
+        - 2
+        - description
+        - 1
+        - 5
+        - type
+        - 2
+        - 5
+        - 1
+        - type
+        - 3
+        - 3
+        - 11
+        - 4
+        - 11
+        - 5
+        - 11
     description: a test
     type:
         - string
@@ -432,13 +410,16 @@ alias: *schema
 	origin := alias["__origin__"]
 	c.Assert(origin, NotNil, Commentf("alias expansion must preserve __origin__"))
 
-	originMap := origin.(map[string]any)
-	sequences := originMap["sequences"]
-	c.Assert(sequences, NotNil, Commentf("alias __origin__ must contain sequences"))
-
-	seqMap := sequences.(map[string]any)
-	required := seqMap["required"]
-	c.Assert(required, NotNil, Commentf("sequences must contain required field tracking"))
+	// New compact format: []any [file, key_name, key_line, key_col, nf, ..., ns, seq_name, count, ...]
+	// ns > 0 means sequences are present; verify the sequence list is non-empty.
+	seq, ok := origin.([]any)
+	c.Assert(ok, Equals, true, Commentf("origin must be a []any sequence"))
+	// Find ns (at index 4 + nf*3): nf is at index 4 (after file at index 0).
+	nf := toAnyInt(seq[4])
+	nsIdx := 5 + nf*3
+	c.Assert(nsIdx < len(seq), Equals, true, Commentf("sequence must contain ns field"))
+	ns := toAnyInt(seq[nsIdx])
+	c.Assert(ns > 0, Equals, true, Commentf("alias __origin__ must record sequence item locations"))
 }
 
 func (s *S) TestOrigin_DuplicateKey(c *C) {
