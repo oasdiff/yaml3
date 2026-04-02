@@ -259,10 +259,13 @@ schema:
         - 1
         - type
         - 3
+        - string
         - 3
         - 11
+        - "null"
         - 4
         - 11
+        - integer
         - 5
         - 11
     description: a test

@@ -83,10 +83,12 @@ func buildOriginSeq(key, n *Node, file string) []*Node {
 		}
 		if isSequence(v) {
 			// Record locations of scalar items within the sequence.
+			// Format per item: value_str, line_delta, col
 			var itemNodes []*Node
 			for _, item := range v.Content {
 				if item.Kind == ScalarNode {
 					itemNodes = append(itemNodes,
+						strNode(item.Value),
 						intNode(item.Line-key.Line),
 						intNode(item.Column),
 					)
@@ -94,7 +96,7 @@ func buildOriginSeq(key, n *Node, file string) []*Node {
 			}
 			if len(itemNodes) > 0 {
 				ns++
-				seqNodes = append(seqNodes, strNode(k.Value), intNode(len(itemNodes)/2))
+				seqNodes = append(seqNodes, strNode(k.Value), intNode(len(itemNodes)/3))
 				seqNodes = append(seqNodes, itemNodes...)
 			}
 		}
