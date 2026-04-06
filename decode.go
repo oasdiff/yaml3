@@ -526,6 +526,24 @@ func (d *decoder) unmarshal(n *Node, out reflect.Value) (good bool) {
 func (d *decoder) document(n *Node, out reflect.Value) (good bool) {
 	if len(n.Content) == 1 {
 		d.doc = n
+		if d.origin && d.aliasDepth == 0 {
+			root := n.Content[0]
+			if root.Kind == MappingNode && len(root.Content) >= 2 {
+				// Inject __origin__ into the root mapping of the document so that
+				// $ref-rooted YAML files (e.g. schemas/pet.yaml) expose origin
+				// metadata on their top-level schema, just like nested mappings do.
+				// Use the first key's position as the anchor for line-delta calculations.
+				firstKey := root.Content[0]
+				syntheticKey := &Node{
+					Kind:   ScalarNode,
+					Tag:    "!!str",
+					Value:  "",
+					Line:   firstKey.Line,
+					Column: firstKey.Column,
+				}
+				addOriginInMap(syntheticKey, root, d.file)
+			}
+		}
 		d.unmarshal(n.Content[0], out)
 		return true
 	}

@@ -58,6 +58,13 @@ root:
 	buf.Write(result)
 
 	output := `
+__origin__:
+    - file.yaml
+    - ""
+    - 1
+    - 1
+    - 0
+    - 0
 root:
     __origin__:
         - file.yaml
@@ -109,6 +116,13 @@ root:
 	buf.Write(result)
 
 	output := `
+__origin__:
+    - file.yaml
+    - ""
+    - 1
+    - 1
+    - 0
+    - 0
 root:
     __origin__:
         - file.yaml
@@ -181,6 +195,13 @@ parent:
 	buf.Write(result)
 
 	output := `
+__origin__:
+    - spec.yaml
+    - ""
+    - 1
+    - 1
+    - 0
+    - 0
 parent:
     __origin__:
         - spec.yaml
@@ -243,6 +264,13 @@ schema:
 	buf.Write(result)
 
 	output := `
+__origin__:
+    - spec.yaml
+    - ""
+    - 1
+    - 1
+    - 0
+    - 0
 schema:
     __origin__:
         - spec.yaml
