@@ -63,7 +63,10 @@ __origin__:
     - ""
     - 1
     - 1
+    - 1
+    - root
     - 0
+    - 1
     - 0
 root:
     __origin__:
@@ -71,9 +74,12 @@ root:
         - root
         - 1
         - 1
-        - 1
+        - 2
         - hello
         - 1
+        - 5
+        - object
+        - 2
         - 5
         - 0
     hello: world
@@ -121,7 +127,10 @@ __origin__:
     - ""
     - 1
     - 1
+    - 1
+    - root
     - 0
+    - 1
     - 0
 root:
     __origin__:
@@ -200,7 +209,10 @@ __origin__:
     - ""
     - 1
     - 1
+    - 1
+    - parent
     - 0
+    - 1
     - 0
 parent:
     __origin__:
@@ -208,9 +220,12 @@ parent:
         - parent
         - 1
         - 1
-        - 1
+        - 2
         - name
         - 1
+        - 5
+        - labels
+        - 2
         - 5
         - 0
     labels:
@@ -269,7 +284,10 @@ __origin__:
     - ""
     - 1
     - 1
+    - 1
+    - schema
     - 0
+    - 1
     - 0
 schema:
     __origin__:

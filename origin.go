@@ -12,8 +12,12 @@ func isSequence(n *Node) bool {
 	return n.Kind == SequenceNode
 }
 
+func isMapping(n *Node) bool {
+	return n.Kind == MappingNode
+}
+
 func addOriginInSeq(n *Node, file string) *Node {
-	if n.Kind != MappingNode || len(n.Content) == 0 {
+	if !isMapping(n) || len(n.Content) == 0 {
 		return n
 	}
 	// in case of a sequence, we use the first element as the key
@@ -21,7 +25,7 @@ func addOriginInSeq(n *Node, file string) *Node {
 }
 
 func addOriginInMap(key, n *Node, file string) *Node {
-	if n.Kind != MappingNode {
+	if !isMapping(n) {
 		return n
 	}
 	return addOrigin(key, n, file)
@@ -72,7 +76,7 @@ func buildOriginSeq(key, n *Node, file string) []*Node {
 		if isOrigin(k) {
 			continue
 		}
-		if isScalar(v) || isSequence(v) {
+		if isScalar(v) || isSequence(v) || isMapping(v) {
 			// Record the location of this field's key.
 			nf++
 			fieldNodes = append(fieldNodes,
