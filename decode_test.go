@@ -844,6 +844,49 @@ func (s *S) TestUnmarshalFullTimestamp(c *C) {
 	c.Assert(t.(time.Time).In(time.UTC), Equals, time.Date(2015, 2, 24, 21, 19, 39, 123456789, time.UTC))
 }
 
+func (s *S) TestDecoderDisableTimestamps(c *C) {
+	// Date-shaped unquoted scalar at the top level.
+	{
+		var v interface{}
+		dec := yaml.NewDecoder(strings.NewReader("1344-08-22"))
+		dec.DisableTimestamps(true)
+		c.Assert(dec.Decode(&v), IsNil)
+		c.Assert(v, Equals, "1344-08-22")
+	}
+
+	// Same scalar used as a map key. Default behaviour produces a
+	// time.Time-keyed map; with DisableTimestamps(true) the key stays a string.
+	{
+		var v map[string]string
+		dec := yaml.NewDecoder(strings.NewReader("1344-08-22: hello\n"))
+		dec.DisableTimestamps(true)
+		c.Assert(dec.Decode(&v), IsNil)
+		c.Assert(v, DeepEquals, map[string]string{"1344-08-22": "hello"})
+	}
+
+	// Explicit !!timestamp tag is preserved: DisableTimestamps suppresses
+	// implicit inference only, so an explicit caller-tagged value still
+	// resolves to time.Time.
+	{
+		var v interface{}
+		dec := yaml.NewDecoder(strings.NewReader("!!timestamp 1344-08-22"))
+		dec.DisableTimestamps(true)
+		c.Assert(dec.Decode(&v), IsNil)
+		_, ok := v.(time.Time)
+		c.Assert(ok, Equals, true)
+	}
+
+	// Default behaviour is unchanged: a date-shaped scalar still decodes as
+	// time.Time when DisableTimestamps is not set.
+	{
+		var v interface{}
+		dec := yaml.NewDecoder(strings.NewReader("1344-08-22"))
+		c.Assert(dec.Decode(&v), IsNil)
+		_, ok := v.(time.Time)
+		c.Assert(ok, Equals, true)
+	}
+}
+
 func (s *S) TestDecoderSingleDocument(c *C) {
 	// Test that Decoder.Decode works as expected on
 	// all the unmarshal tests.
