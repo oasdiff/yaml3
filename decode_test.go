@@ -845,45 +845,84 @@ func (s *S) TestUnmarshalFullTimestamp(c *C) {
 }
 
 func (s *S) TestDecoderDisableTimestamps(c *C) {
-	// Date-shaped unquoted scalar at the top level.
+
+	// Case 1 — top-level date-shaped scalar into interface{}.
+	// Default resolves to time.Time; DisableTimestamps keeps it a string.
 	{
-		var v interface{}
+		var defV interface{}
 		dec := yaml.NewDecoder(strings.NewReader("1344-08-22"))
+		c.Assert(dec.Decode(&defV), IsNil)
+		_, isTime := defV.(time.Time)
+		c.Assert(isTime, Equals, true)
+
+		var setV interface{}
+		dec = yaml.NewDecoder(strings.NewReader("1344-08-22"))
 		dec.DisableTimestamps(true)
-		c.Assert(dec.Decode(&v), IsNil)
-		c.Assert(v, Equals, "1344-08-22")
+		c.Assert(dec.Decode(&setV), IsNil)
+		c.Assert(setV, Equals, "1344-08-22")
 	}
 
-	// Same scalar used as a map key. Default behaviour produces a
-	// time.Time-keyed map; with DisableTimestamps(true) the key stays a string.
+	// Case 2 — date-shaped scalar used as a map key into interface{}.
+	// Default produces map[interface{}]interface{} keyed by time.Time
+	// (the regression this PR fixes: downstream string-keyed lookup
+	// breaks). DisableTimestamps keeps the key a string, so the result
+	// is map[string]interface{}.
 	{
-		var v map[string]string
+		var defV interface{}
 		dec := yaml.NewDecoder(strings.NewReader("1344-08-22: hello\n"))
+		c.Assert(dec.Decode(&defV), IsNil)
+		defMap, ok := defV.(map[interface{}]interface{})
+		c.Assert(ok, Equals, true)
+		sawTimestamp := false
+		for k := range defMap {
+			if _, isTime := k.(time.Time); isTime {
+				sawTimestamp = true
+			}
+		}
+		c.Assert(sawTimestamp, Equals, true)
+
+		var setV interface{}
+		dec = yaml.NewDecoder(strings.NewReader("1344-08-22: hello\n"))
 		dec.DisableTimestamps(true)
-		c.Assert(dec.Decode(&v), IsNil)
-		c.Assert(v, DeepEquals, map[string]string{"1344-08-22": "hello"})
+		c.Assert(dec.Decode(&setV), IsNil)
+		c.Assert(setV, DeepEquals, map[string]interface{}{"1344-08-22": "hello"})
 	}
 
-	// Explicit !!timestamp tag is preserved: DisableTimestamps suppresses
-	// implicit inference only, so an explicit caller-tagged value still
-	// resolves to time.Time.
+	// Case 3 — date-shaped key into map[string]string.
+	// The target type forces a string key in both cases, so the option
+	// does not change the result. Verifies it does not break the
+	// structured-target path either.
 	{
-		var v interface{}
+		expected := map[string]string{"1344-08-22": "hello"}
+
+		var defV map[string]string
+		dec := yaml.NewDecoder(strings.NewReader("1344-08-22: hello\n"))
+		c.Assert(dec.Decode(&defV), IsNil)
+		c.Assert(defV, DeepEquals, expected)
+
+		var setV map[string]string
+		dec = yaml.NewDecoder(strings.NewReader("1344-08-22: hello\n"))
+		dec.DisableTimestamps(true)
+		c.Assert(dec.Decode(&setV), IsNil)
+		c.Assert(setV, DeepEquals, expected)
+	}
+
+	// Case 4 — explicitly tagged !!timestamp scalar.
+	// DisableTimestamps suppresses implicit inference only; explicit
+	// tags are the caller's intent and are preserved in both cases.
+	{
+		var defV interface{}
 		dec := yaml.NewDecoder(strings.NewReader("!!timestamp 1344-08-22"))
-		dec.DisableTimestamps(true)
-		c.Assert(dec.Decode(&v), IsNil)
-		_, ok := v.(time.Time)
-		c.Assert(ok, Equals, true)
-	}
+		c.Assert(dec.Decode(&defV), IsNil)
+		_, defIsTime := defV.(time.Time)
+		c.Assert(defIsTime, Equals, true)
 
-	// Default behaviour is unchanged: a date-shaped scalar still decodes as
-	// time.Time when DisableTimestamps is not set.
-	{
-		var v interface{}
-		dec := yaml.NewDecoder(strings.NewReader("1344-08-22"))
-		c.Assert(dec.Decode(&v), IsNil)
-		_, ok := v.(time.Time)
-		c.Assert(ok, Equals, true)
+		var setV interface{}
+		dec = yaml.NewDecoder(strings.NewReader("!!timestamp 1344-08-22"))
+		dec.DisableTimestamps(true)
+		c.Assert(dec.Decode(&setV), IsNil)
+		_, setIsTime := setV.(time.Time)
+		c.Assert(setIsTime, Equals, true)
 	}
 }
 
