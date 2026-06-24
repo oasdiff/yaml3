@@ -59,3 +59,21 @@ jobs:
       working-directory: ${{ github.workspace }}/go/src/gopkg.in/yaml.v3
     - run: go test .
       working-directory: ${{ github.workspace }}/go/src/gopkg.in/yaml.v3
+
+  # The matrix above runs in GOPATH mode across pre-module Go versions, so it
+  # can't check the module lockfile. This job verifies, on modern Go, that the
+  # committed go.sum is complete and the cached modules are untampered -- so a
+  # go.mod pinned to a release tag can't ship with only a pseudo-version (or a
+  # missing entry) in go.sum, which fails a clean -mod=readonly build but is
+  # invisible to a CI that runs `go mod download`/`go get` before testing.
+  modules:
+    name: Verify modules
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version: stable
+    - run: go mod download
+    - run: git diff --exit-code -- go.mod go.sum
+    - run: go mod verify
