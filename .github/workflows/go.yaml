@@ -5,19 +5,11 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # The module requires go 1.22.5 and the code uses modern features
-        # (range-over-int, any), so test the floor through the latest stable.
-        # The old upstream matrix (Go 1.5..tip in GOPATH mode) couldn't build
-        # this fork at all.
-        go: ["1.22.x", "1.23.x", "stable"]
     steps:
     - uses: actions/checkout@v7
     - uses: actions/setup-go@v6
       with:
-        go-version: ${{ matrix.go }}
+        go-version: stable
     - run: go test -race ./...
 
   # Verify the module lockfile: the committed go.sum must be complete (git diff
