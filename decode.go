@@ -276,7 +276,14 @@ func (p *parser) sequence() *Node {
 	// the start of the following line after a block dedent, which would
 	// overshoot the element. Empty sequences fall back to that token's mark.
 	if !p.textless {
-		if len(n.Content) > 0 {
+		if n.Style&FlowStyle != 0 {
+			// Flow collections close with an explicit `}`/`]`; the END token's
+			// mark is just past that delimiter, so the span covers the whole
+			// collection (and stays consistent with the empty-flow fallback,
+			// which has no last child and uses the same mark).
+			n.EndLine = p.event.end_mark.line + 1
+			n.EndColumn = p.event.end_mark.column + 1
+		} else if len(n.Content) > 0 {
 			last := n.Content[len(n.Content)-1]
 			n.EndLine, n.EndColumn = last.EndLine, last.EndColumn
 		} else {
@@ -331,7 +338,14 @@ func (p *parser) mapping() *Node {
 	// (Origin __origin__ nodes are appended later, during decode, so the last
 	// element here is a real value.)
 	if !p.textless {
-		if len(n.Content) > 0 {
+		if n.Style&FlowStyle != 0 {
+			// Flow collections close with an explicit `}`/`]`; the END token's
+			// mark is just past that delimiter, so the span covers the whole
+			// collection (and stays consistent with the empty-flow fallback,
+			// which has no last child and uses the same mark).
+			n.EndLine = p.event.end_mark.line + 1
+			n.EndColumn = p.event.end_mark.column + 1
+		} else if len(n.Content) > 0 {
 			last := n.Content[len(n.Content)-1]
 			n.EndLine, n.EndColumn = last.EndLine, last.EndColumn
 		} else {
