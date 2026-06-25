@@ -68,6 +68,8 @@ __origin__:
     - 0
     - 1
     - 0
+    - 3
+    - 17
 root:
     __origin__:
         - file.yaml
@@ -82,6 +84,8 @@ root:
         - 2
         - 5
         - 0
+        - 3
+        - 17
     hello: world
     object:
         __origin__:
@@ -94,6 +98,8 @@ root:
             - 1
             - 9
             - 0
+            - 1
+            - 17
         foo: bar
 `
 
@@ -132,6 +138,8 @@ __origin__:
     - 0
     - 1
     - 0
+    - 5
+    - 19
 root:
     __origin__:
         - file.yaml
@@ -143,6 +151,8 @@ root:
         - 1
         - 5
         - 0
+        - 5
+        - 19
     continents:
         - __origin__:
             - file.yaml
@@ -157,6 +167,8 @@ root:
             - 1
             - 11
             - 0
+            - 1
+            - 19
           name: europe
           size: 10
         - __origin__:
@@ -172,6 +184,8 @@ root:
             - 1
             - 11
             - 0
+            - 1
+            - 19
           name: america
           size: 20
 `
@@ -214,6 +228,8 @@ __origin__:
     - 0
     - 1
     - 0
+    - 5
+    - 23
 parent:
     __origin__:
         - spec.yaml
@@ -228,6 +244,8 @@ parent:
         - 2
         - 5
         - 0
+        - 5
+        - 23
     labels:
         __origin__:
             - spec.yaml
@@ -245,6 +263,8 @@ parent:
             - 3
             - 9
             - 0
+            - 3
+            - 23
         env: production
         region: us-east
         version: "2.0"
@@ -289,6 +309,8 @@ __origin__:
     - 0
     - 1
     - 0
+    - 5
+    - 18
 schema:
     __origin__:
         - spec.yaml
@@ -314,6 +336,8 @@ schema:
         - integer
         - 5
         - 11
+        - 5
+        - 18
     description: a test
     type:
         - string
@@ -469,6 +493,51 @@ alias: *schema
 	c.Assert(nsIdx < len(seq), Equals, true, Commentf("sequence must contain ns field"))
 	ns := toAnyInt(seq[nsIdx])
 	c.Assert(ns > 0, Equals, true, Commentf("alias __origin__ must record sequence item locations"))
+}
+
+// TestOrigin_BlockEnd verifies the trailing end_delta/end_col appended to each
+// __origin__ sequence reconstruct the end of the whole block (the position just
+// past its last content), which is how kin-openapi recovers an endpoint's span.
+func (s *S) TestOrigin_BlockEnd(c *C) {
+	// 1: paths:
+	// 2:   /pets:
+	// 3:     get:
+	// 4:       summary: list
+	// 5:       x: "y"
+	// 6:   /health:
+	input := `paths:
+  /pets:
+    get:
+      summary: list
+      x: "y"
+  /health:
+    get:
+      summary: ok
+`
+	dec := yaml.NewDecoder(bytes.NewBufferString(input))
+	dec.Origin(true, "spec.yaml")
+	var out any
+	err := dec.Decode(&out)
+	c.Assert(err, IsNil)
+
+	get := out.(map[string]any)["paths"].(map[string]any)["/pets"].(map[string]any)["get"].(map[string]any)
+	seq, ok := get["__origin__"].([]any)
+	c.Assert(ok, Equals, true, Commentf("get block must carry __origin__"))
+
+	keyLine := toAnyInt(seq[2]) // header: file, key_name, key_line, key_col, ...
+	c.Assert(keyLine, Equals, 3, Commentf("get key is on line 3"))
+
+	// end_delta, end_col are the last two entries.
+	endDelta := toAnyInt(seq[len(seq)-2])
+	endCol := toAnyInt(seq[len(seq)-1])
+	endLine := keyLine + endDelta
+	// When a block is followed by a dedented sibling, the end lands on the
+	// block's last content line (x: "y" on line 5), inclusive. The key property
+	// for block extraction: it covers the whole get block and does not bleed
+	// into the /health sibling on line 6.
+	c.Assert(endLine, Equals, 5, Commentf("get block should end at its last content line (5), not bleed into the sibling; got %d", endLine))
+	// End column is just past the last content (`x: "y"` ends at col 12, so 13).
+	c.Assert(endCol, Equals, 13, Commentf("end column should be just past the last content; got %d", endCol))
 }
 
 func (s *S) TestOrigin_DuplicateKey(c *C) {
