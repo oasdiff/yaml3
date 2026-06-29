@@ -16,6 +16,29 @@ func isMapping(n *Node) bool {
 	return n.Kind == MappingNode
 }
 
+// isScalarValuedMapping reports whether n is a mapping with at least one entry
+// and whose every (non-origin) value is a scalar (a map of atomic values, e.g.
+// map[string]string in Go), so its keys are worth locating individually.
+// Object-valued mappings return false: each of their values is a mapping that
+// already carries its own __origin__, so recording their keys here would be
+// redundant.
+func isScalarValuedMapping(n *Node) bool {
+	if !isMapping(n) {
+		return false
+	}
+	has := false
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		if isOrigin(n.Content[i]) {
+			continue
+		}
+		if !isScalar(n.Content[i+1]) {
+			return false
+		}
+		has = true
+	}
+	return has
+}
+
 func addOriginInSeq(n *Node, file string) *Node {
 	if !isMapping(n) || len(n.Content) == 0 {
 		return n
@@ -103,6 +126,32 @@ func buildOriginSeq(key, n *Node, file string) []*Node {
 			if len(itemNodes) > 0 {
 				ns++
 				seqNodes = append(seqNodes, strNode(k.Value), intNode(len(itemNodes)/3))
+				seqNodes = append(seqNodes, itemNodes...)
+			}
+		} else if isScalarValuedMapping(v) {
+			// Record the locations of the keys of a scalar-valued mapping, so a
+			// consumer can pinpoint an individual entry by name. Reuses the
+			// sequence slot: the items are the map keys. Object-valued mappings are
+			// skipped because each of their values is itself a mapping that already
+			// carries its own __origin__.
+			// Format per key: key_str, line_delta, col
+			var itemNodes []*Node
+			count := 0
+			for j := 0; j+1 < len(v.Content); j += 2 {
+				mk := v.Content[j]
+				if isOrigin(mk) {
+					continue
+				}
+				itemNodes = append(itemNodes,
+					strNode(mk.Value),
+					intNode(mk.Line-key.Line),
+					intNode(mk.Column),
+				)
+				count++
+			}
+			if count > 0 {
+				ns++
+				seqNodes = append(seqNodes, strNode(k.Value), intNode(count))
 				seqNodes = append(seqNodes, itemNodes...)
 			}
 		}

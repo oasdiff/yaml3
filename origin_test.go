@@ -83,7 +83,12 @@ root:
         - object
         - 2
         - 5
-        - 0
+        - 1
+        - object
+        - 1
+        - foo
+        - 3
+        - 9
         - 3
         - 17
     hello: world
@@ -193,9 +198,13 @@ root:
 	c.Assert(buf.String(), Equals, output[1:])
 }
 
-// TestOrigin_MapOfScalars verifies that getFieldLocations() records each
-// scalar entry in a map's __origin__.fields, providing precise line/column
-// for maps of atomic types (e.g. map[string]string in Go).
+// TestOrigin_MapOfScalars verifies that a scalar-valued mapping (a map of
+// atomic values, e.g. map[string]string in Go) has its keys recorded as a
+// sequence under the parent's __origin__, so a consumer can pinpoint an
+// individual entry by name. Here the parent records the keys of "labels"
+// (env/region/version). This is needed because such maps decode into Go map
+// types that carry no Origin of their own, so the only reachable location for
+// each key is on the parent.
 func (s *S) TestOrigin_MapOfScalars(c *C) {
 	input := `
 parent:
@@ -243,7 +252,18 @@ parent:
         - labels
         - 2
         - 5
-        - 0
+        - 1
+        - labels
+        - 3
+        - env
+        - 3
+        - 9
+        - region
+        - 4
+        - 9
+        - version
+        - 5
+        - 9
         - 5
         - 23
     labels:
