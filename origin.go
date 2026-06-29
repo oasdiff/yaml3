@@ -164,7 +164,7 @@ func buildOriginSeq(key, n *Node, file string) []*Node {
 
 	// Block end: line delta from key_line and absolute end column of the whole
 	// mapping. Lets a consumer reconstruct the full block span
-	// [key_line, key_line+end_delta] -- e.g. an entire endpoint operation block.
+	// [key_line, key_line+end_delta] -- e.g. an entire nested block.
 	endDelta, endCol := 0, 0
 	if n.EndLine > 0 {
 		endDelta = n.EndLine - key.Line

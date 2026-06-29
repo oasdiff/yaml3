@@ -370,7 +370,6 @@ schema:
 
 // TestOrigin_SequenceOfEmptyMaps verifies that addOriginInSeq does not panic
 // when a sequence contains an empty mapping node (e.g. `- {}`).
-// Regression test for https://github.com/oasdiff/oasdiff/issues/808.
 func (s *S) TestOrigin_SequenceOfEmptyMaps(c *C) {
 	input := `
 root:
@@ -387,7 +386,6 @@ root:
 
 // TestOrigin_AnchorAliasInMap verifies that a YAML alias used as a map value
 // does not produce duplicate __origin__ keys in nested mapping nodes.
-// Regression test for https://github.com/oasdiff/oasdiff/issues/821.
 //
 // The anchor's nested MappingNode (e.g. "properties") is shared by pointer
 // with every alias that resolves to it. Without the fix, addOriginInMap appends
@@ -421,7 +419,6 @@ x-outer:
 // TestOrigin_AnchorAliasInSequence verifies that a YAML alias used as a
 // sequence element does not produce duplicate __origin__ keys in nested
 // mapping nodes inside the anchor.
-// Regression test for https://github.com/oasdiff/oasdiff/issues/821.
 func (s *S) TestOrigin_AnchorAliasInSequence(c *C) {
 	input := `
 x-pet: &pet
@@ -444,12 +441,11 @@ pets:
 	c.Assert(err, IsNil)
 }
 
-// TestOrigin_ManyAliasesNoExcessiveAliasing verifies that a spec with many
+// TestOrigin_ManyAliasesNoExcessiveAliasing verifies that a document with many
 // aliases and nested mappings does not trigger the "excessive aliasing" check.
-// Regression test for the follow-up to https://github.com/oasdiff/oasdiff/issues/821:
-// fixing the duplicate __origin__ bug caused __origin__ metadata entries to be
+// Fixing the duplicate-__origin__ bug caused __origin__ metadata entries to be
 // re-decoded during every alias expansion, inflating aliasCount and spuriously
-// tripping the ratio check for large specs.
+// tripping the ratio check for large documents.
 //
 // The threshold is empirically derived: 5000 aliases of an anchor with 20
 // properties reliably triggers "document contains excessive aliasing" when
@@ -517,7 +513,7 @@ alias: *schema
 
 // TestOrigin_BlockEnd verifies the trailing end_delta/end_col appended to each
 // __origin__ sequence reconstruct the end of the whole block (the position just
-// past its last content), which is how kin-openapi recovers an endpoint's span.
+// past its last content), which lets a consumer recover the full block span.
 func (s *S) TestOrigin_BlockEnd(c *C) {
 	// 1: paths:
 	// 2:   /pets:
