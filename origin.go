@@ -33,6 +33,11 @@ var smallIntNodes = func() [maxCachedInt]*Node {
 	return nodes
 }()
 
+// originKeyNode is the "__origin__" key appended to every mapping that gets
+// origin data. Its value is a constant, so one shared Node serves the whole
+// process. Line stays 0, which is what isOrigin tests for.
+var originKeyNode = &Node{Kind: ScalarNode, Tag: "!!str", Value: originTag}
+
 // originCache interns the nodes for one decode. It is per-decode rather than
 // global so it needs no locking and is reclaimed with the decoder.
 //
@@ -107,7 +112,8 @@ func addOrigin(key, n *Node, file string, c *originCache) *Node {
 
 	seq := buildOriginSeq(key, n, file, c)
 	n.Content = append(n.Content,
-		&Node{Kind: ScalarNode, Tag: "!!str", Value: originTag}, // Line==0 → isOrigin
+		originKeyNode,
+		// Unlike the key, this one has to be fresh: it owns seq.
 		&Node{Kind: SequenceNode, Tag: "!!seq", Content: seq},
 	)
 	return n
