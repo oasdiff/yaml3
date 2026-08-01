@@ -144,6 +144,9 @@ func (dec *Decoder) Decode(v interface{}) (err error) {
 	d := newDecoder()
 	d.knownFields = dec.knownFields
 	d.origin = dec.origin
+	if d.origin {
+		d.origins = newOriginCache()
+	}
 	d.file = dec.file
 	d.disableTimestamps = dec.disableTimestamps
 	dec.parser.disableTimestamps = dec.disableTimestamps
