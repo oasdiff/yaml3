@@ -377,6 +377,10 @@ type decoder struct {
 	aliasDepth        int
 	disableTimestamps bool
 
+	// origins interns the Nodes that encode origin data, which repeat heavily
+	// within a document. Created only when origin tracking is on.
+	origins *originCache
+
 	mergedFields map[interface{}]bool
 }
 
@@ -592,7 +596,7 @@ func (d *decoder) document(n *Node, out reflect.Value) (good bool) {
 					Line:   firstKey.Line,
 					Column: firstKey.Column,
 				}
-				addOriginInMap(syntheticKey, root, d.file)
+				addOriginInMap(syntheticKey, root, d.file, d.origins)
 			}
 		}
 		d.unmarshal(n.Content[0], out)
@@ -822,7 +826,7 @@ func (d *decoder) sequence(n *Node, out reflect.Value) (good bool) {
 	for i := 0; i < l; i++ {
 		e := reflect.New(et).Elem()
 		if d.origin && d.aliasDepth == 0 {
-			addOriginInSeq(n.Content[i], d.file)
+			addOriginInSeq(n.Content[i], d.file, d.origins)
 		}
 		if ok := d.unmarshal(n.Content[i], e); ok {
 			out.Index(j).Set(e)
@@ -939,7 +943,7 @@ func (d *decoder) mapping(n *Node, out reflect.Value) (good bool) {
 			e := reflect.New(et).Elem()
 
 			if d.origin && d.aliasDepth == 0 {
-				addOriginInMap(n.Content[i], n.Content[i+1], d.file)
+				addOriginInMap(n.Content[i], n.Content[i+1], d.file, d.origins)
 			}
 			if d.unmarshal(n.Content[i+1], e) || n.Content[i+1].ShortTag() == nullTag && (mapIsNew || !out.MapIndex(k).IsValid()) {
 				out.SetMapIndex(k, e)

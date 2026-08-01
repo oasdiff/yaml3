@@ -1,8 +1,67 @@
 package yaml
 
-import "fmt"
+import "strconv"
 
 const originTag = "__origin__"
+
+// Origin data is encoded as Nodes so it survives the node -> JSON ->
+// UnmarshalJSON conversion the decoder performs on the way to the caller's
+// type. That makes every recorded line, column, count and field name its own
+// heap-allocated Node carrying its own string, and on a large document those
+// dominate the decode: a profile of a 23 MB spec put intNode alone at 486 MB
+// of 3.07 GB allocated.
+//
+// These nodes are immutable leaf scalars -- nothing appends to their Content
+// or rewrites their Value -- so equal values can share one Node. Two caches
+// cover the two ways a spec repeats itself.
+//
+// Neither cache needs a size bound. The strings interned are mapping keys and
+// scalar sequence items (not values like descriptions), so the distinct set is
+// small by construction, and in the worst case the cache costs one pointer per
+// Node that would have been allocated regardless.
+
+// maxCachedInt covers essentially every column, line delta and count. Only an
+// absolute line number in a large document exceeds it, and there is one of
+// those per mapping against many small ones.
+const maxCachedInt = 1024
+
+var smallIntNodes = func() [maxCachedInt]*Node {
+	var nodes [maxCachedInt]*Node
+	for i := range nodes {
+		nodes[i] = &Node{Kind: ScalarNode, Tag: "!!int", Value: strconv.Itoa(i)}
+	}
+	return nodes
+}()
+
+// originKeyNode is the "__origin__" key appended to every mapping that gets
+// origin data. Its value is a constant, so one shared Node serves the whole
+// process. Line stays 0, which is what isOrigin tests for.
+var originKeyNode = &Node{Kind: ScalarNode, Tag: "!!str", Value: originTag}
+
+// originCache interns the nodes for one decode. It is per-decode rather than
+// global so it needs no locking and is reclaimed with the decoder.
+//
+// It keys on the string itself and holds no notion of "the" file, because the
+// file recorded in an origin is not constant: a $ref carries the decode into
+// another document, and the origin has to name the file the element actually
+// came from. Interning by value is correct either way -- a second file is
+// simply a second entry.
+type originCache struct {
+	strs map[string]*Node
+}
+
+func newOriginCache() *originCache {
+	return &originCache{strs: make(map[string]*Node)}
+}
+
+func (c *originCache) str(v string) *Node {
+	if n, ok := c.strs[v]; ok {
+		return n
+	}
+	n := &Node{Kind: ScalarNode, Tag: "!!str", Value: v}
+	c.strs[v] = n
+	return n
+}
 
 func isScalar(n *Node) bool {
 	return n.Kind == ScalarNode
@@ -16,19 +75,19 @@ func isMapping(n *Node) bool {
 	return n.Kind == MappingNode
 }
 
-func addOriginInSeq(n *Node, file string) *Node {
+func addOriginInSeq(n *Node, file string, c *originCache) *Node {
 	if !isMapping(n) || len(n.Content) == 0 {
 		return n
 	}
 	// in case of a sequence, we use the first element as the key
-	return addOrigin(n.Content[0], n, file)
+	return addOrigin(n.Content[0], n, file, c)
 }
 
-func addOriginInMap(key, n *Node, file string) *Node {
+func addOriginInMap(key, n *Node, file string, c *originCache) *Node {
 	if !isMapping(n) {
 		return n
 	}
-	return addOrigin(key, n, file)
+	return addOrigin(key, n, file, c)
 }
 
 // addOrigin injects a compact __origin__ sequence into the mapping node n.
@@ -46,24 +105,25 @@ func addOriginInMap(key, n *Node, file string) *Node {
 //     key_line and absolute column of the position just past its last content.
 //     Appended last so a consumer that stops after the sequences section
 //     simply ignores it (backward compatible).
-func addOrigin(key, n *Node, file string) *Node {
+func addOrigin(key, n *Node, file string, c *originCache) *Node {
 	if isOrigin(key) {
 		return n
 	}
 
-	seq := buildOriginSeq(key, n, file)
+	seq := buildOriginSeq(key, n, file, c)
 	n.Content = append(n.Content,
-		&Node{Kind: ScalarNode, Tag: "!!str", Value: originTag}, // Line==0 → isOrigin
+		originKeyNode,
+		// Unlike the key, this one has to be fresh: it owns seq.
 		&Node{Kind: SequenceNode, Tag: "!!seq", Content: seq},
 	)
 	return n
 }
 
-func buildOriginSeq(key, n *Node, file string) []*Node {
+func buildOriginSeq(key, n *Node, file string, c *originCache) []*Node {
 	// Header: file, key_name, key_line, key_col
 	nodes := []*Node{
-		strNode(file),
-		strNode(key.Value),
+		c.str(file),
+		c.str(key.Value),
 		intNode(key.Line),
 		intNode(key.Column),
 	}
@@ -83,7 +143,7 @@ func buildOriginSeq(key, n *Node, file string) []*Node {
 		// Record the location of this field's key.
 		nf++
 		fieldNodes = append(fieldNodes,
-			strNode(k.Value),
+			c.str(k.Value),
 			intNode(k.Line-key.Line),
 			intNode(k.Column),
 		)
@@ -94,7 +154,7 @@ func buildOriginSeq(key, n *Node, file string) []*Node {
 			for _, item := range v.Content {
 				if item.Kind == ScalarNode {
 					itemNodes = append(itemNodes,
-						strNode(item.Value),
+						c.str(item.Value),
 						intNode(item.Line-key.Line),
 						intNode(item.Column),
 					)
@@ -102,7 +162,7 @@ func buildOriginSeq(key, n *Node, file string) []*Node {
 			}
 			if len(itemNodes) > 0 {
 				ns++
-				seqNodes = append(seqNodes, strNode(k.Value), intNode(len(itemNodes)/3))
+				seqNodes = append(seqNodes, c.str(k.Value), intNode(len(itemNodes)/3))
 				seqNodes = append(seqNodes, itemNodes...)
 			}
 		}
@@ -131,10 +191,9 @@ func isOrigin(key *Node) bool {
 	return key.Line == 0
 }
 
-func strNode(v string) *Node {
-	return &Node{Kind: ScalarNode, Tag: "!!str", Value: v}
-}
-
 func intNode(v int) *Node {
-	return &Node{Kind: ScalarNode, Tag: "!!int", Value: fmt.Sprintf("%d", v)}
+	if 0 <= v && v < maxCachedInt {
+		return smallIntNodes[v]
+	}
+	return &Node{Kind: ScalarNode, Tag: "!!int", Value: strconv.Itoa(v)}
 }
