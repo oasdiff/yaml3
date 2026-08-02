@@ -89,11 +89,12 @@ func Unmarshal(in []byte, out interface{}) (err error) {
 
 // A Decoder reads and decodes YAML values from an input stream.
 type Decoder struct {
-	parser            *parser
-	knownFields       bool
-	origin            bool
-	file              string
-	disableTimestamps bool
+	parser             *parser
+	knownFields        bool
+	origin             bool
+	file               string
+	disableTimestamps  bool
+	allowDuplicateKeys bool
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -104,6 +105,21 @@ func NewDecoder(r io.Reader) *Decoder {
 	return &Decoder{
 		parser: newParserFromReader(r),
 	}
+}
+
+// AllowDuplicateKeys controls what happens when a mapping repeats a key.
+//
+// By default a repeated key is an error, which is YAML's rule and this
+// package's long-standing behaviour. Enabling this makes the last occurrence
+// win instead, which is what encoding/json does with a repeated JSON object
+// name (RFC 8259 says names SHOULD be unique, so the handling is left to the
+// implementation).
+//
+// It exists for callers that decode both YAML and JSON into the same types and
+// need one answer for both, rather than a document loading or failing
+// depending on which format it happens to be written in.
+func (dec *Decoder) AllowDuplicateKeys(enable bool) {
+	dec.allowDuplicateKeys = enable
 }
 
 // KnownFields ensures that the keys in decoded mappings to
@@ -143,6 +159,7 @@ func (dec *Decoder) DisableTimestamps(disable bool) {
 func (dec *Decoder) Decode(v interface{}) (err error) {
 	d := newDecoder()
 	d.knownFields = dec.knownFields
+	d.uniqueKeys = !dec.allowDuplicateKeys
 	d.origin = dec.origin
 	d.file = dec.file
 	d.disableTimestamps = dec.disableTimestamps
