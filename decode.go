@@ -924,10 +924,10 @@ func (d *decoder) mapping(n *Node, out reflect.Value) (good bool) {
 		if d.unmarshal(n.Content[i], k) {
 			if mergedFields != nil {
 				ki := k.Interface()
-				if mergedFields[ki] {
+				if d.getPossiblyUnhashableKey(mergedFields, ki) {
 					continue
 				}
-				mergedFields[ki] = true
+				d.setPossiblyUnhashableKey(mergedFields, ki, true)
 			}
 			kkind := k.Kind()
 			if kkind == reflect.Interface {
@@ -1052,6 +1052,27 @@ func failWantMap() {
 	failf("map merge requires map or sequence of maps as the value")
 }
 
+// A key of a mapping being merged is not checked for hashability before it is
+// looked up, and a map or a sequence key panics when hashed. Report it as a
+// yaml error, like the key check further down the mapping does.
+func (d *decoder) setPossiblyUnhashableKey(m map[interface{}]bool, key interface{}, value bool) {
+	defer func() {
+		if err := recover(); err != nil {
+			failf("%v", err)
+		}
+	}()
+	m[key] = value
+}
+
+func (d *decoder) getPossiblyUnhashableKey(m map[interface{}]bool, key interface{}) bool {
+	defer func() {
+		if err := recover(); err != nil {
+			failf("%v", err)
+		}
+	}()
+	return m[key]
+}
+
 func (d *decoder) merge(parent *Node, merge *Node, out reflect.Value) {
 	mergedFields := d.mergedFields
 	if mergedFields == nil {
@@ -1059,7 +1080,7 @@ func (d *decoder) merge(parent *Node, merge *Node, out reflect.Value) {
 		for i := 0; i < len(parent.Content); i += 2 {
 			k := reflect.New(ifaceType).Elem()
 			if d.unmarshal(parent.Content[i], k) {
-				d.mergedFields[k.Interface()] = true
+				d.setPossiblyUnhashableKey(d.mergedFields, k.Interface(), true)
 			}
 		}
 	}
