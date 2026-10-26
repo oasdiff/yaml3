@@ -1036,6 +1036,10 @@ var unmarshalErrorTests = []struct {
 	{"a: !!binary ==", "yaml: !!binary value contains invalid base64 data"},
 	{"{[.]}", `yaml: invalid map key: \[\]interface \{\}\{"\."\}`},
 	{"{{.}}", `yaml: invalid map key: map\[string]interface \{\}\{".":interface \{\}\(nil\)\}`},
+	// A map or sequence key of a merged mapping is looked up among the keys
+	// already seen before the key check rejects it, and hashing one panics.
+	{"<<:\n  ? [1]\n  : v\n1: x\n", `yaml: runtime error: hash of unhashable type \[\]interface \{\}`},
+	{"<<:\n  ? {k: v}\n  : 1\n1: x\n", `yaml: runtime error: hash of unhashable type map\[string]interface \{\}`},
 	{"b: *a\na: &a {c: 1}", `yaml: unknown anchor 'a' referenced`},
 	{"%TAG !%79! tag:yaml.org,2002:\n---\nv: !%79!int '1'", "yaml: did not find expected whitespace"},
 	{"a:\n  1:\nb\n  2:", ".*could not find expected ':'"},
