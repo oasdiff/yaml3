@@ -440,3 +440,33 @@ tail: |
 	c.Assert(root.EndLine, Equals, 6)
 	c.Assert(root.EndColumn, Equals, 4)
 }
+
+// An explicit key with no value gets a null the parser supplies, marked at the
+// start of the line after the key. A mapping that ended there would reach past
+// its own text, and past the whole document when the key is on the last line.
+func (s *S) TestNodeEndPositionExplicitKeyWithoutValue(c *C) {
+	//  1: a:
+	//  2: ? b
+	src := "a:\n? b"
+
+	var doc yaml.Node
+	c.Assert(yaml.Unmarshal([]byte(src), &doc), IsNil)
+
+	root := doc.Content[0]
+	c.Assert(root.Kind, Equals, yaml.MappingNode)
+	c.Assert(root.EndLine, Equals, 2)   // the key `b` is the last text there is
+	c.Assert(root.EndColumn, Equals, 4) // just past `b` (col 3)
+
+	// The supplied null still carries the mark it was given.
+	null := root.Content[3]
+	c.Assert(null.Tag, Equals, "!!null")
+	c.Assert(null.Line, Equals, 3)
+
+	// A value that is only empty, rather than absent, is on the key's own line
+	// and keeps ending the entry.
+	var withEmpty yaml.Node
+	c.Assert(yaml.Unmarshal([]byte("a:\n"), &withEmpty), IsNil)
+	empty := withEmpty.Content[0]
+	c.Assert(empty.EndLine, Equals, 1)
+	c.Assert(empty.EndColumn, Equals, 3)
+}

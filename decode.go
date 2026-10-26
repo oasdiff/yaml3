@@ -347,6 +347,14 @@ func (p *parser) mapping() *Node {
 			n.EndColumn = p.event.end_mark.column + 1
 		} else if len(n.Content) > 0 {
 			last := n.Content[len(n.Content)-1]
+			// An explicit key with no value gets a null the document never
+			// wrote, marked at the start of the line after the key. Ending
+			// there reaches past the key's own text, and past the whole input
+			// when the key is on the last line, so end with the text that is
+			// actually there.
+			if prev := len(n.Content) - 2; prev >= 0 && unwritten(last) && last.Line > n.Content[prev].EndLine {
+				last = n.Content[prev]
+			}
 			n.EndLine, n.EndColumn = last.EndLine, last.EndColumn
 		} else {
 			n.EndLine = p.event.end_mark.line + 1
@@ -355,6 +363,13 @@ func (p *parser) mapping() *Node {
 	}
 	p.expect(yaml_MAPPING_END_EVENT)
 	return n
+}
+
+// unwritten reports whether n stands for a value the document does not contain:
+// a null the parser supplies for a missing value, spanning no text.
+func unwritten(n *Node) bool {
+	return n.Kind == ScalarNode && n.Tag == nullTag && n.Value == "" &&
+		n.Line == n.EndLine && n.Column == n.EndColumn
 }
 
 // ----------------------------------------------------------------------------
